@@ -67,6 +67,16 @@ const Settings = () => {
   }, [config])
 
   const onFormSubmit = async (model: any) => {
+    model.SECURITY_CAPTCHA_PROVIDER = 'hcaptcha'
+
+    if (!model.SECURITY_CAPTCHA_SECRET) {
+      model.SECURITY_CAPTCHA_ENABLED = false
+    }
+
+    if ('number' === typeof model.SECURITY_CAPTCHA_TIMEOUT) {
+      model.SECURITY_CAPTCHA_TIMEOUT = `${model.SECURITY_CAPTCHA_TIMEOUT.toString(10)}s`
+    }
+
     for (const [key, value] of Object.entries(model)) {
       // remove any whitespaces in OAuth or Sms provider credentials
       if ((key.includes('EXTERNAL') || key.includes('SMS')) && typeof value === 'string') {
@@ -111,6 +121,20 @@ const Settings = () => {
     setExternalProvidersModel({ ...config })
   }
 
+  const handleCaptchaTimeout = (timeout: any) => {
+    if ('string' === typeof timeout) {
+      try {
+        return parseInt(timeout.replace(/[^0-9]+/g, ''), 10)
+      } catch (e: any) {
+        return 10
+      }
+    } else if ('number' === typeof timeout) {
+      return timeout
+    }
+
+    return 10
+  }
+
   return (
     <div className="">
       <div className="my-8 mt-0">
@@ -124,6 +148,9 @@ const Settings = () => {
             'PASSWORD_MIN_LENGTH',
             'SECURITY_UPDATE_PASSWORD_REQUIRE_REAUTHENTICATION',
             'SECURITY_REFRESH_TOKEN_REUSE_INTERVAL',
+            'SECURITY_CAPTCHA_ENABLED',
+            'SECURITY_CAPTCHA_SECRET',
+            'SECURITY_CAPTCHA_TIMEOUT',
           ])}
           model={{
             SITE_URL: model.SITE_URL || undefined,
@@ -131,11 +158,16 @@ const Settings = () => {
             DISABLE_SIGNUP: model.DISABLE_SIGNUP,
             JWT_EXP: model.JWT_EXP || undefined,
             PASSWORD_MIN_LENGTH: model.PASSWORD_MIN_LENGTH || undefined,
-            SECURITY_REFRESH_TOKEN_REUSE_INTERVAL: model.SECURITY_REFRESH_TOKEN_REUSE_INTERVAL || undefined,
+            SECURITY_REFRESH_TOKEN_REUSE_INTERVAL:
+              model.SECURITY_REFRESH_TOKEN_REUSE_INTERVAL || undefined,
             SECURITY_UPDATE_PASSWORD_REQUIRE_REAUTHENTICATION:
               model.SECURITY_UPDATE_PASSWORD_REQUIRE_REAUTHENTICATION || false,
-            }}
-            onSubmit={(model: any) => onFormSubmit(model)}
+            SECURITY_CAPTCHA_ENABLED: model.SECURITY_CAPTCHA_ENABLED || false,
+            SECURITY_CAPTCHA_SECRET: model.SECURITY_CAPTCHA_SECRET || undefined,
+            SECURITY_CAPTCHA_TIMEOUT: handleCaptchaTimeout(model.SECURITY_CAPTCHA_TIMEOUT),
+          }}
+          onChangeModel={(model: any) => setModel(model)}
+          onSubmit={(model: any) => onFormSubmit(model)}
         >
           <AutoField
             name="SITE_URL"
@@ -149,9 +181,20 @@ const Settings = () => {
           />
           <NumField name="JWT_EXP" step="1" />
           <NumField name="PASSWORD_MIN_LENGTH" step="1" min={6} max={10} />
-          <NumField name="SECURITY_REFRESH_TOKEN_REUSE_INTERVAL" step="1" min={0}/>
+          <NumField name="SECURITY_REFRESH_TOKEN_REUSE_INTERVAL" step="1" min={0} />
           <ToggleField name="SECURITY_UPDATE_PASSWORD_REQUIRE_REAUTHENTICATION" />
           <ToggleField name="DISABLE_SIGNUP" />
+          <ToggleField name="SECURITY_CAPTCHA_ENABLED" />
+          {model.SECURITY_CAPTCHA_ENABLED && (
+            <>
+              <AutoField
+                name="SECURITY_CAPTCHA_SECRET"
+                showInlineError
+                errorMessage="Please enter a valid hCaptcha sitekey."
+              />
+              <NumField name="SECURITY_CAPTCHA_TIMEOUT" min={1} max={20} step="1" />
+            </>
+          )}
         </SchemaFormPanel>
       </div>
       <div className="my-8 mt-0">
@@ -195,7 +238,7 @@ const Settings = () => {
             checked={model.EXTERNAL_EMAIL_ENABLED}
             descriptionText={authConfig.properties.EXTERNAL_EMAIL_ENABLED.help}
           />
-          <NumField name="MAILER_OTP_EXP" step="1" min={0} max={86400}/>
+          <NumField name="MAILER_OTP_EXP" step="1" min={0} max={86400} />
           <UIToggle
             layout="horizontal"
             className="mb-4"
@@ -326,8 +369,8 @@ const Settings = () => {
                   showInlineError
                   errorMessage="Please enter the phone provider."
                 />
-                <NumField name="SMS_OTP_EXP" step="1" min={0}/>
-                <NumField name="SMS_OTP_LENGTH" step="1" min={6} max={10}/>
+                <NumField name="SMS_OTP_EXP" step="1" min={0} />
+                <NumField name="SMS_OTP_LENGTH" step="1" min={6} max={10} />
                 {smsProviderModel?.SMS_PROVIDER === 'messagebird' ? (
                   <>
                     <SecretField
