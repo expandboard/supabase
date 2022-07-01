@@ -11,15 +11,7 @@ interface Props {
 const UpgradePrompt: React.FC<Props> = ({ projectRef, from }) => {
   const sub = useProjectSubscription(projectRef)
   const tier = sub?.subscription?.tier
-  const tierSupabaseProdId = tier?.supabase_prod_id.toLowerCase()
-  const queryLimitKey = Object.keys(TIER_QUERY_LIMITS).find((key) =>
-    tierSupabaseProdId?.includes(key.toLowerCase())
-  )
-
-  if (tier && !queryLimitKey) {
-    console.error('Tier is unknown, defaulting to Free')
-  }
-  const queryLimit = TIER_QUERY_LIMITS[(queryLimitKey || 'FREE') as keyof typeof TIER_QUERY_LIMITS]
+  const queryLimit = TIER_QUERY_LIMITS[(tier?.key || 'FREE') as keyof typeof TIER_QUERY_LIMITS]
 
   const fromValue = from ? dayjs(from) : dayjs()
   const fromMax = dayjs().startOf('day').subtract(queryLimit.value, queryLimit.unit)
@@ -34,7 +26,7 @@ const UpgradePrompt: React.FC<Props> = ({ projectRef, from }) => {
       }`}
     >
       <span>{`${queryLimit.text} retention`}</span>
-      {!tierSupabaseProdId?.includes('payg') && (
+      {queryLimit.promptUpgrade && (
         <Link href={`/project/${projectRef}/settings/billing`}>
           <Button size="tiny">Upgrade</Button>
         </Link>
